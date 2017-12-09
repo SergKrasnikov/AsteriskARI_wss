@@ -1,10 +1,8 @@
-import logging
+import threading
 import websocket
 import ssl
 import json
-import multiprocessing as mp
-
-logger = mp.log_to_stderr(logging.INFO)
+import time
 
 
 def _connect_to_ari_wss() -> websocket.WebSocket():
@@ -21,28 +19,47 @@ def _connect_to_ari_wss() -> websocket.WebSocket():
             ws.connect("wss://192.168.168.150:8089/ari/events?api_key=asterisk:asterisk&app=dialer&subscribeAll=true")
 
         except websocket.WebSocketException as e:
-            logger.error("connect to ari Error: %s" % e)
+            print("connect to ari Error: %s" % e)
 
         if ws.connected:
             return ws
 
 
-def ari_wss_recv_send():
-    wss = _connect_to_ari_wss()
+def _connect_to_console_ws() -> websocket.WebSocket():
+    """
+    Connecting to Django Websocket server(channels)ws
+    """
+
+    websocket.enableTrace(True)
 
     while True:
-        # print(wss.getstatus())
-        # print(wss.getheaders())
-        wss_data = wss.recv()
-        print(wss_data)
-        # wss_data = wss_data.replace('\n ', '')
+        ws = websocket.WebSocket()
+        try:
+
+            ws.connect("ws://127.0.0.1:8000/")
+
+        except websocket.WebSocketException as e:
+            print("connect to console Error: %s" % e)
+
+        except ConnectionRefusedError as e:
+            print("connect to console Error: %s" % e)
+
+        if ws.connected:
+            return ws
+        time.sleep(1)
+
+
+def ari_wss_recv_send():
+    ari_wss = _connect_to_ari_wss()
+    console_ws = _connect_to_console_ws()
+
+    while True:
+        wss_data = ari_wss.recv()
         wss_data = json.loads(wss_data)
-        print(wss_data)
         endpoint = wss_data.get("endpoint")
-        print(endpoint)
         if endpoint:
             state = endpoint.get("state")
-            print(state)
+            console_ws.send(state)
 
 
 def create_daemons():
@@ -55,14 +72,6 @@ def create_daemons():
     :return: list of multiprocessing.Process
     """
 
-    print('111')
-    process = mp.Process(
-            target=ari_wss_recv_send(),
-            kwargs={},
-    )
-    print('222')
-    process.daemon = True
-    print('333')
+    thread = threading.Thread(target=ari_wss_recv_send, daemon=True, )
 
-    process.start()
-    process.join()
+    thread.start()
