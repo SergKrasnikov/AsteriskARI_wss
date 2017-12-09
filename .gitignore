@@ -101,3 +101,4 @@ ENV/
 # mypy
 .mypy_cache/
 Будет удалено .idea/
+Будет удалено apps/
