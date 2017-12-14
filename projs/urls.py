@@ -15,7 +15,19 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from django.conf.urls import url
+
+from applications.module1.views import ARIRestViewSet
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+]
+
+urlpatterns += [
+    url(r'^ari_rest/$', ARIRestViewSet.as_view(), )
+]
+
+urlpatterns += [
+    url(r'^ari/$', TemplateView.as_view(template_name="ari_status_client.html")),
 ]

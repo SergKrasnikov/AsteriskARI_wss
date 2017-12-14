@@ -1,3 +1,4 @@
 Django
 channels
 asgi_redis
+djangorestframework

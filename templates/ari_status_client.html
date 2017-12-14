@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Asterisk ARI Status clients</title>
+
+<style>
+.Red {
+    color: Red;
+}
+.Green {
+    color: Green;
+}
+.Blue {
+    color: Blue;
+}
+.Chocolate {
+    color: Chocolate;
+}
+.b-container{
+    width:700px;
+    height:150px;
+    background-color: #eee;
+    margin:0 auto;
+    padding:10px;
+    font-size:30px;
+    color: #fff;
+}
+.b-popup {
+    width: 100%;
+    height: 2000px;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    display: none;
+}
+.b-popup .b-popup-content {
+    margin: 85px auto 0 auto;
+    width: 295px;
+    height: 40px;
+    padding: 10px;
+    background-color: #999;
+    border-radius: 5px;
+    box-shadow: 0 0 10px #000;
+}
+</style>
+
+<script>
+    function hide_b_popup() {
+        document.getElementsByClassName('b-popup')[0].style.display = 'none';
+    }
+</script>
+</head>
+
+<body>
+
+<div class="b-container">
+    Статус абонента 101:<span id="subscriber_status_html" class=""></span>
+</div>
+<div class="b-popup">
+    <div class="b-popup-content">
+        <span id="subscriber_status_popup" class=""></span>
+        <br />
+        <a href="javascript:hide_b_popup();">Hide popup</a>
+    </div>
+</div>
+
+</body>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function(event) {
+
+        var MyWebSocket = new WebSocket("ws://127.0.0.1:8000/");
+
+        console.log(MyWebSocket.readyState);
+
+        b_popup = document.getElementsByClassName('b-popup')[0];
+        subscriber_status_html = document.getElementById('subscriber_status_html');
+        subscriber_status_popup = document.getElementById('subscriber_status_popup');
+
+        MyWebSocket.onmessage = function (event) {
+            var state = null;
+            var number = null;
+            var attribute = event.data.search('&');
+            if(!attribute){
+                state = event.data;
+            } else {
+                var state_array = event.data.split('&');
+                state = state_array[0];
+                number = state_array[1];
+            }
+            //alert(state + ' & ' + number);
+            switch (state) {
+                case "online":
+                    subscriber_status_html.className='Green';
+                    subscriber_status_html.innerHTML=state;
+                    subscriber_status_popup.className='Green';
+                    subscriber_status_popup.innerHTML=state;
+                    b_popup.style.display='block';
+                    break;
+                case "Ring":
+                    subscriber_status_html.className='Blue';
+                    subscriber_status_html.innerHTML=state + ' Number: ' + number;
+                    subscriber_status_popup.className='Blue';
+                    subscriber_status_popup.innerHTML=state + ' Number: ' + number;
+                    b_popup.style.display='block';
+                    break;
+                case "Up":
+                    subscriber_status_html.className='Chocolate';
+                    subscriber_status_html.innerHTML=state + ' Number: ' + number;
+                    subscriber_status_popup.className='Chocolate';
+                    subscriber_status_popup.innerHTML=state + ' Number: ' + number;
+                    b_popup.style.display='block';
+                    break;
+                case "offline":
+                    subscriber_status_html.className='Red';
+                    subscriber_status_html.innerHTML=state;
+                    subscriber_status_popup.className='Red';
+                    subscriber_status_popup.innerHTML=state;
+                    b_popup.style.display='block';
+                    break;
+            }
+        }
+    })
+</script>
+
+</html>

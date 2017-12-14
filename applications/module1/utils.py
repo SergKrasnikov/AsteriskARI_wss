@@ -3,6 +3,7 @@ import websocket
 import ssl
 import json
 import time
+import http.client
 
 
 def _connect_to_ari_wss() -> websocket.WebSocket():
@@ -51,15 +52,51 @@ def _connect_to_console_ws() -> websocket.WebSocket():
 
 def ari_wss_recv_send():
     ari_wss = _connect_to_ari_wss()
-    console_ws = _connect_to_console_ws()
+    conn = http.client.HTTPConnection(host="localhost", port=8000, timeout=60, )
 
     while True:
-        wss_data = ari_wss.recv()
-        wss_data = json.loads(wss_data)
-        endpoint = wss_data.get("endpoint")
-        if endpoint:
+        try:
+            wss_data = ari_wss.recv()
+        except TimeoutError:
+            ari_wss = _connect_to_ari_wss()
+            wss_data = ari_wss.recv()
+
+        try:
+            wss_data = json.loads(wss_data)
+        except json.decoder.JSONDecodeError:
+            continue
+
+        state, number = None, None
+        if wss_data.get('variable'):
+            continue
+
+        status_type = wss_data.get('type')
+
+        if status_type == 'PeerStatusChange':
+            endpoint = wss_data.get('endpoint')
             state = endpoint.get("state")
-            console_ws.send(state)
+
+        elif status_type == 'ChannelStateChange':
+            channel = wss_data.get('channel')
+            state = channel.get("state")
+            caller = channel.get("caller")
+            number = caller.get("name")
+
+        if state:
+
+            if state in ['Ring', 'Up', ]:
+                request = 'status=%s&number=%s' % (state, number)
+            else:
+                request = 'status=%s' % state
+
+            try:
+                conn.request('GET', '/ari_rest/?%s' % request)
+            except http.client.NotConnected:
+                conn = http.client.HTTPConnection(host="localhost", port=8000, timeout=60, )
+                conn.request('GET', '/ari_rest/?%s' % request)
+
+            response = conn.getresponse()
+            response.read()
 
 
 def create_daemons():
